@@ -22,7 +22,7 @@ provider:
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:*"
 
 functions:
-  serverlessHandsOn:
+  crawler:
     handler: handler.crawler
     events:
       - schedule: rate(5 minutes)
