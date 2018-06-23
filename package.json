@@ -18,6 +18,12 @@
   },
   "homepage": "https://github.com/novemberde/serverless-crawler-demo#readme",
   "devDependencies": {
+    "aws-sdk": "^2.263.1",
     "serverless": "^1.27.3"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "dynamoose": "^0.8.7",
+    "puppeteer": "^1.5.0"
   }
 }
