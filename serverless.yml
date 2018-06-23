@@ -1,0 +1,28 @@
+service: ServerlessHandsOnPart2
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 128
+  stage:  ${file(./config.yml):STAGE}
+  region: ${file(./config.yml):AWS_REGION}
+  deploymentBucket: ${file(./config.yml):DEPLOYMENT_BUCKET}
+  environment:
+    NODE_ENV: production
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:*"
+
+functions:
+  serverlessHandsOn:
+    handler: handler.crawler
+    events:
+      - schedule: rate(5 minutes)
