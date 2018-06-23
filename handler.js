@@ -55,20 +55,23 @@ exports.crawler = async function (event, context, callback) {
 		const $nate = cheerio.load(nateContent);
 
 		// Get doms containing latest keywords
-		$naver('.ah_a').each(((i, el) => {
+		$naver('.ah_l').filter((i, el) => {
+			return i===0;
+		}).find('.ah_item').each(((i, el) => {
+			if(i >= 20) return;
 			const keyword = $naver(el).find('.ah_k').text();
-			naverKeywords.push({rank: i, keyword});
+			naverKeywords.push({rank: i+1, keyword});
 		}));
-
-		$daum('.rank_cont').each((i, el) => {
-			const keyword = $daum(el).find('.link_issue[tabindex=-1]').text();
-			if(!keyword) return;
-			daumKeywords.push({rank: i, keyword});
+		$daum('.rank_cont').find('.link_issue[tabindex=-1]').each((i, el) => {
+			const keyword = $daum(el).text();
+			daumKeywords.push({rank: i+1, keyword});
 		});
 
-		$nate('.kwd_list').find('li').each((i, el) => {
+		$nate('.kwd_list').filter((i, el) => {
+			return i === 0;
+		}).find('li').each((i, el) => {
 			const keyword = $nate(el).find('a').text();
-			nateKeywords.push({rank: i, keyword});
+			nateKeywords.push({rank: i+1, keyword});
 		});
 
 		// console.log({
