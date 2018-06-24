@@ -29,6 +29,7 @@ exports.crawler = async function (event, context, callback) {
 			got('https://naver.com'),
 			got('http://daum.net'),
 		]);
+		const createdAt = new Date().toISOString();
 		
 		const naverContent = result[0].body;
 		const daumContent = result[1].body;
