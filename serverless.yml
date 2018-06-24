@@ -4,6 +4,7 @@ provider:
   name: aws
   runtime: nodejs8.10
   memorySize: 128
+  timeout: 30
   stage:  ${file(./config.yml):STAGE}
   region: ${file(./config.yml):AWS_REGION}
   deploymentBucket: ${file(./config.yml):DEPLOYMENT_BUCKET}
