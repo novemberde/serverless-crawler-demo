@@ -241,4 +241,277 @@ S3의 메인으로 가서 버킷 생성하기 버튼을 클릭합니다.
 
 ![s3-create-btn.png](/images/s3-create-1.png)
 
-## 
+## Node.js로 크롤링 시작하기
+
+파일 트리는 다음과 같습니다.
+
+```txt
+environment
+└── serverless-crawler  : Crawler
+    ├── handler.js  : Lambda에서 trigger하기 위한 handler
+    ├── handler.test.js  : Local에서 handler를 trigger하기 위한 스크립트
+    ├── config.yml : serverless.yml에서 사용하기 위한 변수
+    ├── package.json
+    └── serverless.yml : Serverless Framework config file
+```
+
+먼저 터미널을 열어 serverless-crawler 디렉터리를 생성하고 npm 초기화를 시켜줍니다.
+
+```sh
+ec2-user:~/ $ cd ~/environment
+ec2-user:~/environment $ mkdir serverless-crawler && cd ec2-user:~/environment/serverless-crawler $ npm init -y
+```
+
+필요한 npm module들을 install합니다. 
+여기서 aws-sdk는 개발을 위해 설치합니다. 
+Lambda는 aws-sdk를 기본적으로 포함하고 있기 때문에 실제로 배포할 때는 포함시키지 않아야합니다. 
+dev-dependency로 넣어두면 배포할 때 제외됩니다.
+
+- Dependencies
+  - cheerio : HTML페이지를 파싱하고, 결과 데이터를 수집하기 위한 API를 제공
+  <!-- - puppeteer : DevTools Protocol을 통해 헤드가 없는 Chrome또는 Chromium을 제어하는 고급 API를 제공 -->
+  - got : 몇 MB에 불과한 http 요청을 간단하게 하는 API 제공
+  - dynamoose : DynamoDB를 사용하기 쉽도록 Modeling하는 도구
+- Dev-Dependencies
+  - aws-sdk : AWS 리소스를 사용하기 위한 SDK
+  - serverless : Serverless Framework
+
+```sh
+$ npm i -S cheerio got dynamoose
+$ npm i -D aws-sdk serverless
+```
+
+각 파일을 편집합니다.
+
+### serverless-crawler/config.yml
+
+```yml
+AWS_REGION: ap-northeast-2
+STAGE: dev
+DEPLOYMENT_BUCKET: ${USERNAME}-serverless-hands-on-1    # USERNAME 수정 필요!
+```
+
+### serverless-crawler/handler.js
+
+```js
+const got = require('got');
+const cheerio = require('cheerio');
+const dynamoose = require('dynamoose');
+
+require('aws-sdk').config.region = "ap-northeast-2";
+
+const PortalKeyword = dynamoose.model('PortalKeyword', {
+    portal: {
+        type: String,
+        hashKey: true
+    },
+    createdAt: {
+        type: String,
+        rangeKey: true
+    },
+	keywords: {
+		type: Array
+	}
+}, {
+    create: false, // Create a table if not exist,
+});
+
+exports.crawler = async function (event, context, callback) {
+	try {
+		let naverKeywords = [];
+		let daumKeywords = [];
+
+		const result = await Promise.all([
+			got('https://naver.com'),
+			got('http://daum.net'),
+		]);
+		const createdAt = new Date().toISOString();
+		
+		const naverContent = result[0].body;
+		const daumContent = result[1].body;
+		const $naver = cheerio.load(naverContent);
+		const $daum = cheerio.load(daumContent);
+
+		// Get doms containing latest keywords
+		$naver('.ah_l').filter((i, el) => {
+			return i===0;
+		}).find('.ah_item').each(((i, el) => {
+			if(i >= 20) return;
+			const keyword = $naver(el).find('.ah_k').text();
+			naverKeywords.push({rank: i+1, keyword});
+		}));
+		$daum('.rank_cont').find('.link_issue[tabindex=-1]').each((i, el) => {
+			const keyword = $daum(el).text();
+			daumKeywords.push({rank: i+1, keyword});
+		});
+
+		// console.log({
+		// 	naver: naverKeywords,
+		// 	daum: daumKeywords,
+		// });
+
+		await new PortalKeyword({
+			portal: 'naver',
+			createdAt,
+			keywords: naverKeywords
+		}).save();
+		await new PortalKeyword({
+			portal: 'daum',
+			createdAt,
+			keywords: daumKeywords
+		}).save();
+
+		return callback(null, "success");
+	} catch (err) {
+		callback(err);
+	}
+}
+```
+
+### serverless-crawler/handler.test.js
+
+```js
+const crawler = require('./handler').crawler;
+
+crawler({}, {}, (err, result) => {
+    if(err) return console.error(err);
+    console.log(result);
+});
+```
+
+### serverless-crawler/serverless.yml
+
+```yml
+service: ServerlessHandsOnPart2
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 256
+  timeout: 30
+  stage:  ${file(./config.yml):STAGE}
+  region: ${file(./config.yml):AWS_REGION}
+  deploymentBucket: ${file(./config.yml):DEPLOYMENT_BUCKET}
+  environment:
+    NODE_ENV: production
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:*"
+
+functions:
+  crawler:
+    handler: handler.crawler
+    events:
+      - schedule: rate(10 minutes)
+
+```
+
+## DynamoDB 테이블 생성하기
+
+DynamoDB를 설계할 시 주의해야할 점은 [FAQ](https://aws.amazon.com/ko/dynamodb/faqs/)를 참고하시길 바랍니다.
+
+이제 DynamoDB에 Todo table을 생성할 것입니다. 파티션 키와 정렬 키는 다음과 같이 설정합니다.
+
+- 파티션키(Partition Key): portal
+- 정렬키(Sort Key): createdAt
+
+그럼 [DynamoDB Console](https://ap-northeast-2.console.aws.amazon.com/dynamodb/home?region=ap-northeast-2#)로 이동합니다.
+테이블 만들기를 클릭하여 아래와 같이 테이블을 생성합니다.
+
+![dynamodb-create](/images/dynamodb-create.png)
+
+그런 다음에 다시 Cloud9으로 돌아가서 테스트 코드를 돌려봅니다.
+
+```sh
+ec2-user:~/environment/serverless-crawler $ npm test
+
+> serverless-crawler-demo@1.0.0 test/home/ec2-user/environment/serverless-crawler-demo
+> node handler.test.js
+
+success
+```
+
+[DynamoDB Console](https://ap-northeast-2.console.aws.amazon.com/dynamodb/home?region=ap-northeast-2#tables:selected=PortalKeyword)에 들어가서 성공적으로 항목들이 생성되었는지 확인합니다.
+
+## Cloud9에서 배포하기
+
+<!-- Cloud9을 통한 배포는 크게 어렵지 않습니다. 다음과 같이 오른쪽 위치에 Local Functions가 있습니다.
+여기에는 편집하고 있는 serverlessHandsOn으로 나타날 것입니다.
+우클릭을 하고 Deploy를 클릭하면 배포가 완료됩니다.
+
+배포가 완료되면 Local Functions 아래에 Remote Functions에 해당 람다를 확인할 수 있습니다.
+
+![c9-deploy](/images/c9-deploy.png) -->
+Node가 8.x버전이 설치되어 있으면 dev-dependency에 설치된 serverless 명령어를 바로 사용할 수 있습니다.
+만일 node 6.x버전이라면 Global로 serverless를 설치하여 줍니다. 현재는 8.x의 버전을 사용하기 때문에 다음 명령어는 넘어가겠습니다.
+
+```sh
+ec2-user:~/environment/serverless-crawler (master) $ npm i -g serverless
+```
+
+설치가 완료되었으면 배포를 합니다. package.json에 script에 serverless deploy를 넣어 두었기 때문에
+다음과 같이 배포를 합니다.
+
+```sh
+ec2-user:~/environment/serverless-crawler (master) $ npm run deploy
+
+> serverless-crawler@1.0.0 deploy /home/ec2-user/environment/serverless-crawler
+> serverless deploy
+
+Serverless: Packaging service...
+Serverless: Excluding development dependencies...
+Serverless: Uploading CloudFormation file to S3...
+Serverless: Uploading artifacts...
+Serverless: Uploading service .zip file to S3 (8.69 MB)...
+Serverless: Validating template...
+Serverless: Creating Stack...
+Serverless: Checking Stack create progress...
+....................
+Serverless: Stack create finished...
+Service Information
+service: ServerlessHandsOnPart2
+stage: dev
+region: ap-northeast-2
+stack: ServerlessHandsOnPart2-dev
+api keys:
+  None
+endpoints:
+  None
+functions:
+  crawler: ServerlessHandsOnPart2-dev-crawler
+```
+
+성공적으로 배포되었습니다.
+지금부터 주기적으로 DynamoDB에 검색어 랭킹이 쌓입니다.
+
+## 리소스 삭제하기
+
+서버리스 앱은 내리는 것이 어렵지 않습니다.
+간단한 Command 하나면 모든 스택이 내려갑니다.
+Cloud9에서 새로운 터미널을 열고 다음과 같이 입력합니다.
+
+```sh
+$ cd ~/environment/serverless-crawler
+$ serverless remove
+Serverless: Getting all objects in S3 bucket...
+Serverless: Removing objects in S3 bucket...
+Serverless: Removing Stack...
+Serverless: Checking Stack removal progress...
+............
+Serverless: Stack removal finished...
+```
+
+## References
+
+- [https://aws.amazon.com/ko/cloud9/](https://aws.amazon.com/ko/cloud9/)
+- [https://serverless.com/](https://serverless.com/)
+- [https://www.npmjs.com/package/got](https://www.npmjs.com/package/got)
+- [https://www.npmjs.com/package/cheerio](https://www.npmjs.com/package/cheerio)
