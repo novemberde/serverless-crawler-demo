@@ -63,11 +63,6 @@ exports.crawler = async function (event, context, callback) {
 			createdAt,
 			keywords: daumKeywords
 		}).save();
-		await new PortalKeyword({
-			portal: 'nate',
-			createdAt,
-			keywords: nateKeywords
-		}).save();
 
 	} catch (err) {
 		callback(err);
