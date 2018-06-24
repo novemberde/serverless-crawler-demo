@@ -64,6 +64,7 @@ exports.crawler = async function (event, context, callback) {
 			keywords: daumKeywords
 		}).save();
 
+		return "success";
 	} catch (err) {
 		callback(err);
 	}
