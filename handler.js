@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const got = require('got');
 const cheerio = require('cheerio');
 const dynamoose = require('dynamoose');
 
@@ -24,35 +24,16 @@ exports.crawler = async function (event, context, callback) {
 	try {
 		let naverKeywords = [];
 		let daumKeywords = [];
-		let nateKeywords = [];
 
-		const browser = await puppeteer.launch();
-		const naverPage = await browser.newPage();
-		const daumPage = await browser.newPage();
-		const natePage = await browser.newPage();
-
-		await Promise.all([
-			naverPage.goto('https://naver.com'),
-			daumPage.goto('http://daum.net'),
-			natePage.goto('http://nate.com')
-		]);
-
-		const createdAt = new Date().toISOString();
-
-		// Ensure that all resources are loaded.
-		await Promise.all([
-			naverPage.waitFor(1000),
-			daumPage.waitFor(1000),
-			natePage.waitFor(1000),
+		const result = await Promise.all([
+			got('https://naver.com'),
+			got('http://daum.net'),
 		]);
 		
-		const naverContent = await naverPage.content();
-		const daumContent = await daumPage.content();
-		const nateContent = await natePage.content();
-		
+		const naverContent = result[0].body;
+		const daumContent = result[1].body;
 		const $naver = cheerio.load(naverContent);
 		const $daum = cheerio.load(daumContent);
-		const $nate = cheerio.load(nateContent);
 
 		// Get doms containing latest keywords
 		$naver('.ah_l').filter((i, el) => {
@@ -67,17 +48,9 @@ exports.crawler = async function (event, context, callback) {
 			daumKeywords.push({rank: i+1, keyword});
 		});
 
-		$nate('.kwd_list').filter((i, el) => {
-			return i === 0;
-		}).find('li').each((i, el) => {
-			const keyword = $nate(el).find('a').text();
-			nateKeywords.push({rank: i+1, keyword});
-		});
-
 		// console.log({
 		// 	naver: naverKeywords,
 		// 	daum: daumKeywords,
-		// 	nate: nateKeywords
 		// });
 
 		await new PortalKeyword({
@@ -96,7 +69,6 @@ exports.crawler = async function (event, context, callback) {
 			keywords: nateKeywords
 		}).save();
 
-		await browser.close();
 	} catch (err) {
 		callback(err);
 	}
