@@ -379,6 +379,26 @@ crawler({}, {}, (err, result) => {
 });
 ```
 
+### serverless-crawler/package.json
+
+```json
+...
+...
+  "description": "AWSKRUG Serverless Group의 첫번째 핸즈온 Part.2 웹크롤러 만들기입니다.😁",
+  "main": "index.js",
+  "scripts": {  // 이 부분을 추가합니다.
+    "test": "node handler.test.js", 
+    "deploy": "serverless deploy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/novemberde/serverless-crawler-demo.git"
+  },
+  "keywords": [],
+  "author": "",
+...
+```
+
 ### serverless-crawler/serverless.yml
 
 ```yml
