@@ -10,20 +10,20 @@ const BUCKET_NAME = "amathon-novemberde";
 AWS.config.region = "ap-northeast-2";
 
 const PortalKeyword = dynamoose.model('PortalKeyword', {
-    portal: {
-        type: String,
-        hashKey: true
-    },
-    createdAt: {
-        type: String,
-        rangeKey: true
-    },
+	portal: {
+		type: String,
+		hashKey: true
+	},
+	createdAt: {
+		type: String,
+		rangeKey: true
+	},
 	keywords: {
 		type: Array
 	}
 }, {
-    create: false, // Create a table if not exist,
-});
+		create: false, // Create a table if not exist,
+	});
 
 const uploadS3 = (buffer, path) => {
 	const params = {
@@ -36,7 +36,7 @@ const uploadS3 = (buffer, path) => {
 
 	return new Promise((resolve, reject) => {
 		return s3.putObject(params, (err, data) => {
-			if(err)	 return reject(err);
+			if (err) return reject(err);
 
 			return resolve(data);
 		})
@@ -53,7 +53,7 @@ exports.crawler = async function (event, context, callback) {
 			got('http://daum.net'),
 		]);
 		const createdAt = new Date().toISOString();
-		
+
 		const naverContent = result[0].body;
 		const daumContent = result[1].body;
 		const $naver = cheerio.load(naverContent);
@@ -61,15 +61,17 @@ exports.crawler = async function (event, context, callback) {
 
 		// Get doms containing latest keywords
 		$naver('.ah_l').filter((i, el) => {
-			return i===0;
+			return i === 0;
 		}).find('.ah_item').each(((i, el) => {
-			if(i >= 20) return;
+			if (i >= 20) return;
 			const keyword = $naver(el).find('.ah_k').text();
-			naverKeywords.push({rank: i+1, keyword});
+			naverKeywords[`rank${i}`] = keyword;
+			// naverKeywords.push({rank, keyword});
 		}));
 		$daum('.rank_cont').find('.link_issue[tabindex=-1]').each((i, el) => {
 			const keyword = $daum(el).text();
-			daumKeywords.push({rank: i+1, keyword});
+			daumKeywords[`rank${i}`] = keyword;
+			// daumKeywords.push({rank: i+1, keyword});
 		});
 
 		// console.log({
@@ -82,14 +84,14 @@ exports.crawler = async function (event, context, callback) {
 		const naverFilePath = `naver/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
 		const daumFilePath = `daum/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
 		const naverBuffer = Buffer.from(JSON.stringify({
+			...naverKeywords,
 			portal: 'naver',
 			createdAt,
-			keywords: naverKeywords
 		}));
 		const daumBuffer = Buffer.from(JSON.stringify({
+			...daumKeywords,
 			portal: 'daum',
 			createdAt,
-			keywords: daumKeywords
 		}));
 
 		await uploadS3(naverBuffer, naverFilePath);
