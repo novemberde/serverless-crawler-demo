@@ -15,7 +15,7 @@ AWS에서 사용하는 리소스는 다음과 같습니다.
 
 - Cloud9: 코드 작성, 실행 및 디버깅을 위한 클라우드 기반 IDE.
 - Lambda: 서버를 프로비저닝하거나 관리하지 않고도 코드를 실행할 수 있게 해주는 컴퓨팅 서비스. 서버리스 아키텍쳐의 핵심 서비스.
-- DynamoDB: 완벽하게 관리되는 NoSQL 데이터베이스 서비스로, 원활한 확장성과 함께 빠르고 예측 가능한 성능을 제공.
+- S3: 데이터 저장소의 역할.
 
 ## Cloud 9 시작하기
 
@@ -229,6 +229,8 @@ serverless-state.json파일은 해당 버전의 serverless application에 대한
 
 ## S3 Bucket 생성하기
 
+이번에는 2개의 버킷을 생성합니다.
+
 S3는 Object Storage로 쉽게 설명하자면 하나의 저장소입니다. 파일들을 업로드 / 다운로드 할 수 있으며 AWS에서 핵심적인 서비스 중 하나입니다.
 여러 방면으로 활용할 수 있지만 여기서는 소스코드의 저장소 역할을 합니다.
 
@@ -242,6 +244,9 @@ S3의 메인으로 가서 버킷 생성하기 버튼을 클릭합니다.
 - 리전(Region): 아시아 태평양(서울)
 
 ![s3-create-btn.png](/images/s3-create-1.png)
+
+
+위와 같은 방법으로 amathon-USERNAME 버킷을 생성합니다. 여기서 USERNAME은 수정합니다.
 
 ## Node.js로 크롤링 시작하기
 
@@ -307,7 +312,7 @@ const moment = require('moment');
 const AWS = require('aws-sdk');
 const fs = require('fs');
 const s3 = new AWS.S3();
-const BUCKET_NAME = ${USERNAME}-serverless-hands-on-1; // 수정필요!!
+const BUCKET_NAME = "amathon-USERNAME"; // USERNAME 부분 수정필요!!
 
 AWS.config.region = "ap-northeast-2";
 
@@ -338,7 +343,7 @@ const uploadS3 = (buffer, path) => {
 
 	return new Promise((resolve, reject) => {
 		return s3.putObject(params, (err, data) => {
-			if(err)	 return reject(err);
+			if (err) return reject(err);
 
 			return resolve(data);
 		})
@@ -355,7 +360,7 @@ exports.crawler = async function (event, context, callback) {
 			got('http://daum.net'),
 		]);
 		const createdAt = new Date().toISOString();
-		
+
 		const naverContent = result[0].body;
 		const daumContent = result[1].body;
 		const $naver = cheerio.load(naverContent);
@@ -363,15 +368,17 @@ exports.crawler = async function (event, context, callback) {
 
 		// Get doms containing latest keywords
 		$naver('.ah_l').filter((i, el) => {
-			return i===0;
+			return i === 0;
 		}).find('.ah_item').each(((i, el) => {
-			if(i >= 20) return;
+			if (i >= 20) return;
 			const keyword = $naver(el).find('.ah_k').text();
-			naverKeywords.push({rank: i+1, keyword});
+			naverKeywords[`rank${i}`] = keyword;
+			// naverKeywords.push({rank, keyword});
 		}));
 		$daum('.rank_cont').find('.link_issue[tabindex=-1]').each((i, el) => {
 			const keyword = $daum(el).text();
-			daumKeywords.push({rank: i+1, keyword});
+			daumKeywords[`rank${i}`] = keyword;
+			// daumKeywords.push({rank: i+1, keyword});
 		});
 
 		// console.log({
@@ -384,14 +391,14 @@ exports.crawler = async function (event, context, callback) {
 		const naverFilePath = `naver/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
 		const daumFilePath = `daum/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
 		const naverBuffer = Buffer.from(JSON.stringify({
+			...naverKeywords,
 			portal: 'naver',
 			createdAt,
-			keywords: naverKeywords
 		}));
 		const daumBuffer = Buffer.from(JSON.stringify({
+			...daumKeywords,
 			portal: 'daum',
 			createdAt,
-			keywords: daumKeywords
 		}));
 
 		await uploadS3(naverBuffer, naverFilePath);
