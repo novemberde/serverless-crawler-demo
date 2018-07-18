@@ -274,12 +274,13 @@ dev-dependency로 넣어두면 배포할 때 제외됩니다.
   <!-- - puppeteer : DevTools Protocol을 통해 헤드가 없는 Chrome또는 Chromium을 제어하는 고급 API를 제공 -->
   - got : 몇 MB에 불과한 http 요청을 간단하게 하는 API 제공
   - dynamoose : DynamoDB를 사용하기 쉽도록 Modeling하는 도구
+  - moment : 날짜 및 시간을 손쉽게 사용하게 하는 모듈
 - Dev-Dependencies
   - aws-sdk : AWS 리소스를 사용하기 위한 SDK
   - serverless : Serverless Framework
 
 ```sh
-$ npm i -S cheerio got dynamoose
+$ npm i -S cheerio got dynamoose moment
 $ npm i -D aws-sdk serverless
 ```
 
@@ -295,12 +296,20 @@ DEPLOYMENT_BUCKET: ${USERNAME}-serverless-hands-on-1    # USERNAME 수정 필요
 
 ### serverless-crawler/handler.js
 
+BUCKET_NAME 변수를 다음과 같이 수정하여 줍니다.
+${USERNAME}-serverless-hands-on-1
+
 ```js
 const got = require('got');
 const cheerio = require('cheerio');
 const dynamoose = require('dynamoose');
+const moment = require('moment');
+const AWS = require('aws-sdk');
+const fs = require('fs');
+const s3 = new AWS.S3();
+const BUCKET_NAME = ${USERNAME}-serverless-hands-on-1; // 수정필요!!
 
-require('aws-sdk').config.region = "ap-northeast-2";
+AWS.config.region = "ap-northeast-2";
 
 const PortalKeyword = dynamoose.model('PortalKeyword', {
     portal: {
@@ -317,6 +326,24 @@ const PortalKeyword = dynamoose.model('PortalKeyword', {
 }, {
     create: false, // Create a table if not exist,
 });
+
+const uploadS3 = (buffer, path) => {
+	const params = {
+		Bucket: BUCKET_NAME,// s3 버킷 이름
+		Key: path,// s3 경로
+		Body: buffer,// 파일 내용
+		ContentLength: buffer.length,// 파일 크기
+		ContentType: "application/json"// mimetype
+	};
+
+	return new Promise((resolve, reject) => {
+		return s3.putObject(params, (err, data) => {
+			if(err)	 return reject(err);
+
+			return resolve(data);
+		})
+	});
+}
 
 exports.crawler = async function (event, context, callback) {
 	try {
@@ -352,16 +379,23 @@ exports.crawler = async function (event, context, callback) {
 		// 	daum: daumKeywords,
 		// });
 
-		await new PortalKeyword({
+		const randomizedPrefix = Math.random().toString(36).substring(2, 6);
+		const now = moment();
+		const naverFilePath = `naver/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
+		const daumFilePath = `daum/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
+		const naverBuffer = Buffer.from(JSON.stringify({
 			portal: 'naver',
 			createdAt,
 			keywords: naverKeywords
-		}).save();
-		await new PortalKeyword({
+		}));
+		const daumBuffer = Buffer.from(JSON.stringify({
 			portal: 'daum',
 			createdAt,
 			keywords: daumKeywords
-		}).save();
+		}));
+
+		await uploadS3(naverBuffer, naverFilePath);
+		await uploadS3(daumBuffer, daumFilePath);
 
 		return callback(null, "success");
 	} catch (err) {
