@@ -21,6 +21,10 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:*"
+    - Effect: "Allow"
+      Action: 
+        - "s3:PutObject"
+      Resource: "arn:aws:s3:::*/*"
 
 functions:
   crawler:

@@ -461,13 +461,16 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:*"
+    - Effect: "Allow"
+      Action: 
+        - "s3:PutObject"
+      Resource: "arn:aws:s3:::*/*"
 
 functions:
   crawler:
     handler: handler.crawler
     events:
       - schedule: rate(10 minutes)
-
 ```
 
 ## DynamoDB 테이블 생성하기
