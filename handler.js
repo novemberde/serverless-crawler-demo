@@ -1,8 +1,13 @@
 const got = require('got');
 const cheerio = require('cheerio');
 const dynamoose = require('dynamoose');
+const moment = require('moment');
+const AWS = require('aws-sdk');
+const fs = require('fs');
+const s3 = new AWS.S3();
+const BUCKET_NAME = "amathon-novemberde";
 
-require('aws-sdk').config.region = "ap-northeast-2";
+AWS.config.region = "ap-northeast-2";
 
 const PortalKeyword = dynamoose.model('PortalKeyword', {
     portal: {
@@ -19,6 +24,24 @@ const PortalKeyword = dynamoose.model('PortalKeyword', {
 }, {
     create: false, // Create a table if not exist,
 });
+
+const uploadS3 = (buffer, path) => {
+	const params = {
+		Bucket: BUCKET_NAME,// s3 버킷 이름
+		Key: path,// s3 경로
+		Body: buffer,// 파일 내용
+		ContentLength: buffer.length,// 파일 크기
+		ContentType: "application/json"// mimetype
+	};
+
+	return new Promise((resolve, reject) => {
+		return s3.putObject(params, (err, data) => {
+			if(err)	 return reject(err);
+
+			return resolve(data);
+		})
+	});
+}
 
 exports.crawler = async function (event, context, callback) {
 	try {
@@ -54,16 +77,23 @@ exports.crawler = async function (event, context, callback) {
 		// 	daum: daumKeywords,
 		// });
 
-		await new PortalKeyword({
+		const randomizedPrefix = Math.random().toString(36).substring(2, 6);
+		const now = moment();
+		const naverFilePath = `naver/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
+		const daumFilePath = `daum/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
+		const naverBuffer = Buffer.from(JSON.stringify({
 			portal: 'naver',
 			createdAt,
 			keywords: naverKeywords
-		}).save();
-		await new PortalKeyword({
+		}));
+		const daumBuffer = Buffer.from(JSON.stringify({
 			portal: 'daum',
 			createdAt,
 			keywords: daumKeywords
-		}).save();
+		}));
+
+		await uploadS3(naverBuffer, naverFilePath);
+		await uploadS3(daumBuffer, daumFilePath);
 
 		return callback(null, "success");
 	} catch (err) {
