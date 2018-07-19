@@ -16,6 +16,8 @@ AWS에서 사용하는 리소스는 다음과 같습니다.
 - Cloud9: 코드 작성, 실행 및 디버깅을 위한 클라우드 기반 IDE.
 - Lambda: 서버를 프로비저닝하거나 관리하지 않고도 코드를 실행할 수 있게 해주는 컴퓨팅 서비스. 서버리스 아키텍쳐의 핵심 서비스.
 - S3: 데이터 저장소의 역할.
+- Athena:  표준 SQL을 사용해 Amazon S3에 저장된 데이터를 간편하게 분석할 수 있는 대화식 쿼리 서비스.
+- QuickSight: 빅데이터를 위한 비지니스 인텔리전스 솔루션.
 
 ## Cloud 9 시작하기
 
@@ -479,7 +481,7 @@ functions:
     events:
       - schedule: rate(10 minutes)
 ```
-
+<!-- 
 ## DynamoDB 테이블 생성하기
 
 DynamoDB를 설계할 시 주의해야할 점은 [FAQ](https://aws.amazon.com/ko/dynamodb/faqs/)를 참고하시길 바랍니다.
@@ -505,7 +507,7 @@ ec2-user:~/environment/serverless-crawler $ npm test
 success
 ```
 
-[DynamoDB Console](https://ap-northeast-2.console.aws.amazon.com/dynamodb/home?region=ap-northeast-2#tables:selected=PortalKeyword)에 들어가서 성공적으로 항목들이 생성되었는지 확인합니다.
+[DynamoDB Console](https://ap-northeast-2.console.aws.amazon.com/dynamodb/home?region=ap-northeast-2#tables:selected=PortalKeyword)에 들어가서 성공적으로 항목들이 생성되었는지 확인합니다. -->
 
 ## Cloud9에서 배포하기
 
