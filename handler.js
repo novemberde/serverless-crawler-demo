@@ -37,7 +37,6 @@ const uploadS3 = (buffer, path) => {
 	return new Promise((resolve, reject) => {
 		return s3.putObject(params, (err, data) => {
 			if (err) return reject(err);
-
 			return resolve(data);
 		})
 	});
@@ -81,8 +80,8 @@ exports.crawler = async function (event, context, callback) {
 
 		const randomizedPrefix = Math.random().toString(36).substring(2, 6);
 		const now = moment();
-		const naverFilePath = `naver/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
-		const daumFilePath = `daum/${now.get("year")}/${now.get("month")}/${now.get("day")}/${randomizedPrefix}${now.toISOString()}`;
+		const naverFilePath = `${now.get("year")}/${now.get("month")+1}/${now.get("date")}/naver/${randomizedPrefix}${now.toISOString()}`;
+		const daumFilePath = `${now.get("year")}/${now.get("month")+1}/${now.get("date")}/daum/${randomizedPrefix}${now.toISOString()}`;
 		const naverBuffer = Buffer.from(JSON.stringify({
 			...naverKeywords,
 			portal: 'naver',
