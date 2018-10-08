@@ -298,7 +298,7 @@ $ npm i -D aws-sdk serverless
 ```yml
 AWS_REGION: ap-northeast-2
 STAGE: dev
-DEPLOYMENT_BUCKET: ${USERNAME}-serverless-hands-on-1    # USERNAME 수정 필요!
+DEPLOYMENT_BUCKET: USERNAME-serverless-hands-on-1    # USERNAME 수정 필요!
 ```
 
 ### serverless-crawler/handler.js
