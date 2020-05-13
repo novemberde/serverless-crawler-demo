@@ -261,7 +261,8 @@ environment
 
 ```sh
 ec2-user:~/ $ cd ~/environment
-ec2-user:~/environment $ mkdir serverless-crawler && cd ec2-user:~/environment/serverless-crawler $ npm init -y
+ec2-user:~/environment $ mkdir serverless-crawler && cd serverless-crawler 
+ec2-user:~/serverless-crawler$ npm init -y
 ```
 
 필요한 npm module들을 install합니다. 
