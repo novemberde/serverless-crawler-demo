@@ -74,17 +74,18 @@ Preferences(설정 화면)에서 ap-northeast-2(Seoul Region)으로 바꾸어줍
 설정을 마친 다음 Node.js 버전을 올려야합니다.
 현재(2018-06-30) 제공하는 node의 버전이 6.10이기 때문입니다.
 보통은 nvm을 따로 설치해야하지만 Cloud9을 사용하면 별도의 nvm 설치는 필요없습니다.
-다음의 명령어를 terminal에 입력하여 node의 버전을 8.10으로 설정합니다.
+다음의 명령어를 terminal에 입력하여 node의 버전을 v12.16.2으로 설정합니다.
 
 ```sh
 $ sudo yum groupinstall 'Development Tools'
-$ nvm install 8.10
-Downloading https://nodejs.org/dist/v8.10.0/node-v8.10.0-linux-x64.tar.xz...
-######################################################################## 100.0%
-Now using node v8.10.0 (npm v5.6.0)
+$ nvm install v12.16.2
+Downloading https://nodejs.org/dist/v12.16.2/node-v12.16.2-linux-x64.tar.xz...
+######################### 100.0%
+Now using node v12.16.2 (npm v6.14.4)
 
-# 8.10을 default로 사용하기
-$ nvm alias default 8.10
+#  v12.16.2을 default로 사용하기
+$ nvm alias default v12.16.2
+default -> v12.16.2
 ```
 
 Cloud9 설정을 완료하였습니다.
