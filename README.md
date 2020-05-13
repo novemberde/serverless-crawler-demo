@@ -388,7 +388,8 @@ crawler({}, {}, (err, result) => {
 ...
   "description": "AWSKRUG Serverless Group의 첫번째 핸즈온 Part.2 웹크롤러 만들기입니다.😁",
   "main": "index.js",
-  "scripts": {  // 이 부분을 추가합니다.
+  "_comment": "// 아래 scripts 부분을 추가합니다.",
+  "scripts": {  
     "test": "node handler.test.js", 
     "deploy": "serverless deploy"
   },
